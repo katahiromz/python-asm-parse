@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+spec = {}
+
 def is_hex(text):
 	for ch in text:
 		if '0' <= ch and ch <= '9':
@@ -10,6 +12,38 @@ def is_hex(text):
 			continue
 		return False
 	return True
+
+def load_spec(file, name):
+	with open(file, 'r') as fin:
+		lines = fin.read().split('\n')
+		for line in lines:
+			i0 = line.find('#')
+			if i0 != -1:
+				line = line[:i0]
+			i1 = line.find(';')
+			if i1 != -1:
+				line = line[:i1]
+			line = line.replace('-stub ', '')
+			i2 = line.find('stdcall')
+			if i2 == -1:
+				i5 = line.find(', ')
+				if i5 != -1:
+					items = line.split(',')
+					func_name = items[0].strip()
+					num_params = items[1].strip()
+					spec[name + "!" + func_name] = {'name': func_name, 'num_params': num_params}
+				continue
+			import re
+			line = re.sub('\\bstdcall\\b', '', line)
+			line = line.replace('  ', '')
+			body = line[i2-1:]
+			i3 = body.find('(')
+			i4 = body.find(')')
+			if i3 == -1 or i4 == -1:
+				continue
+			func_name = body[:i3].strip()
+			params = body[i3+1:i4].split(' ')
+			spec[name + "!" + func_name] = {'name': func_name, 'num_params': len(params), 'params': params}
 
 def parse_disasm(addr, hex, ope, operands):
 	for i in range(0, len(operands)):
@@ -104,6 +138,10 @@ def load_and_parse(file):
 	return data
 
 def main(argv):
+	load_spec("user32.spec", "user32")
+	load_spec("imm32.spec", "IMM32")
+	load_spec("win32k.spec", "win32k")
+	#print(spec)
 	data = load_and_parse(argv[1])
 	print('---')
 	for item in data:
