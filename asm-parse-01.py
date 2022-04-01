@@ -78,9 +78,9 @@ def parse_text(text):
 			if field0[-1] == ':':
 				data.append(['label', field0[0:-1]])
 				continue
-			print('Invalid line: ' + line)
-			continue
-		field1 = items[1].strip()
+		field1 = ''
+		if len(items) >= 2:
+			field1 = items[1].strip()
 		addr = ''
 		hex = ''
 		if is_hex(field0) and is_hex(field1):
