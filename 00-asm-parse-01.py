@@ -143,6 +143,9 @@ def stage2(data):
 	return data
 def stage3(data):
 	return data
+def print_data(data):
+	for item in data:
+		print(item)
 
 def main(argv):
 	load_spec("user32.spec", "user32")
@@ -154,8 +157,7 @@ def main(argv):
 	data = stage2(data)
 	data = stage3(data)
 	print('---')
-	for item in data:
-		print(item)
+	print_data(data)
 
 import sys
 main(sys.argv)
