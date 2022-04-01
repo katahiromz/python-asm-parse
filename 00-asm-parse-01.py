@@ -137,12 +137,22 @@ def load_and_parse(file):
 		data = parse_text(text)
 	return data
 
+def stage1(data):
+	return data
+def stage2(data):
+	return data
+def stage3(data):
+	return data
+
 def main(argv):
 	load_spec("user32.spec", "user32")
 	load_spec("imm32.spec", "IMM32")
 	load_spec("win32k.spec", "win32k")
 	#print(spec)
 	data = load_and_parse(argv[1])
+	data = stage1(data)
+	data = stage2(data)
+	data = stage3(data)
 	print('---')
 	for item in data:
 		print(item)
