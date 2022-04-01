@@ -13,6 +13,19 @@ def is_hex(text):
 		return False
 	return True
 
+def is_dec(text):
+	for ch in text:
+		if '0' <= ch and ch <= '9':
+			continue
+		return False
+	return True
+
+# Unknown register: X0, X1, X2, ...
+def is_unknown_reg(text):
+	if text[0] != 'X':
+		return false
+	return is_dec(text[1:])
+
 def load_spec(file, module_name):
 	with open(file, 'r') as fin:
 		lines = fin.read().split('\n')
