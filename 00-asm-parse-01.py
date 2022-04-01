@@ -13,7 +13,7 @@ def is_hex(text):
 		return False
 	return True
 
-def load_spec(file, name):
+def load_spec(file, module_name):
 	with open(file, 'r') as fin:
 		lines = fin.read().split('\n')
 		for line in lines:
@@ -31,7 +31,7 @@ def load_spec(file, name):
 					items = line.split(',')
 					func_name = items[0].strip()
 					num_params = items[1].strip()
-					spec[name + "!" + func_name] = {'name': func_name, 'num_params': num_params}
+					spec[func_name] = {'function': func_name, 'module': module_name, 'num_params': num_params}
 				continue
 			import re
 			line = re.sub('\\bstdcall\\b', '', line)
@@ -43,7 +43,7 @@ def load_spec(file, name):
 				continue
 			func_name = body[:i3].strip()
 			params = body[i3+1:i4].split(' ')
-			spec[name + "!" + func_name] = {'name': func_name, 'num_params': len(params), 'params': params}
+			spec[func_name] = {'function': func_name, 'module': module_name, 'num_params': len(params), 'params': params}
 
 def parse_disasm(addr, hex, ope, operands):
 	for i in range(0, len(operands)):
