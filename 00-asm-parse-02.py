@@ -34,15 +34,22 @@ def is_dec(text):
 def is_unknown_reg(text):
 	text = text.strip()
 	if text[:3] != 'REG':
-		return false
+		return False
 	return is_dec(text[3:])
 
 # MEM0, MEM1, MEM2, ...
 def is_unknown_mem(text):
 	text = text.strip()
 	if text[:3] != 'MEM':
-		return false
+		return False
 	return is_dec(text[3:])
+
+# X0, X1, X2, ...
+def is_unknown_var(text):
+	text = text.strip()
+	if text[:1] != 'X':
+		return False
+	return is_dec(text[1:])
 
 def is_8bit_reg(text):
 	text = text.strip()
@@ -62,10 +69,10 @@ def is_32bit_reg(text):
 		return True
 	return False
 
-def is_reg(text):
+def is_reg(text, unknown_ok = False):
 	if is_8bit_reg(text) or is_16bit_reg(text) or is_32bit_reg(text):
 		return True
-	if is_unknown_reg(text):
+	if unknown_ok and is_unknown_reg(text):
 		return True
 	return False
 
@@ -93,12 +100,13 @@ def is_arg(text):
 		return True
 	return False
 
-def is_mem(text):
+def is_mem(text, unknown_ok = False):
 	if get_mem_size(text) > 0:
 		return True
 	if is_arg(text):
 		return True
-
+	if unknown_ok and (is_unknown_mem(text) or is_unknown_var(text)):
+		return True
 	return False
 
 def get_size(text):
@@ -111,6 +119,58 @@ def get_size(text):
 	if is_mem(text):
 		return get_mem_size(text)
 	return -1
+
+def is_unknown(op):
+	if is_unknown_mem(op) or is_unknown_reg(op) or is_unknown_var(op):
+		return True
+	return False
+
+def operand_match(replace_dict, op0, op1):
+	if op0 == op1:
+		return True
+	if is_unknown(op0) and not(is_unknown(op1)):
+		if is_reg(op0, True) and is_reg(op1, True):
+			replace_dict[op0] = op1
+			return True
+		if is_mem(op0, True) and is_mem(op1, True):
+			replace_dict[op0] = op1
+			return True
+	if not(is_unknown(op0)) and is_unknown(op1):
+		if is_reg(op0, True) and is_reg(op1, True):
+			replace_dict[op1] = op0
+			return True
+		if is_mem(op0, True) and is_mem(op1, True):
+			replace_dict[op1] = op0
+			return True
+	return False
+
+def asm_match(replace_dict, asm0, asm1):
+	type0 = asm0[0]
+	type1 = asm1[0]
+	if type0 != type1:
+		return False
+	op0 = asm0[1]
+	op1 = asm1[1]
+	if op0 != op1:
+		return False
+	operands0 = asm0[2:]
+	operands1 = asm1[2:]
+	if len(operands0) != len(operands1):
+		return False
+	for i in range(0, len(operands0)):
+		op0 = operands0[i]
+		op1 = operands1[i]
+		if not(operand_match(replace_dict, op0, op1)):
+			return False
+	return True
+
+def code_match(replace_dict, code0, code1):
+	if len(code0) != len(code1):
+		return False
+	for i in range(0, len(code0)):
+		if not(asm_match(replace_dict, code0[i], code1[i])):
+			return False
+	return True
 
 def load_spec(file, module_name):
 	global spec
@@ -147,7 +207,7 @@ def load_spec(file, module_name):
 				params = []
 			spec[module_name + '!' + func_name] = {'function': func_name, 'module': module_name, 'num_params': len(params), 'params': params}
 
-def asm_to_item(addr, hex, ope, operands):
+def parse_asm(addr, hex, ope, operands):
 	for i in range(0, len(operands)):
 		operand = operands[i]
 		i0 = operand.find('[')
@@ -193,9 +253,9 @@ def asm_to_item(addr, hex, ope, operands):
 				if op == 'esp' or op == 'ebp':
 					type = 'stack'
 					break
-		ary = [type, ope]
-		ary.extend(operands)
-		return ary
+		asm = [type, ope]
+		asm.extend(operands)
+		return asm
 	return []
 
 def text_to_code(text):
@@ -242,9 +302,9 @@ def text_to_code(text):
 				items = items[2:]
 			operands = ' '.join(items[1:]).split(',')
 			ope = items[0]
-		ary = asm_to_item(addr, hex, ope, operands)
-		if (len(ary) > 0):
-			code.append(ary)
+		asm = parse_asm(addr, hex, ope, operands)
+		if (len(asm) > 0):
+			code.append(asm)
 			continue
 		print('ERROR: invalid line: ' + line)
 	return code
@@ -506,9 +566,10 @@ def unittest():
 	assert data_to_text(data) == 'pop eax;'
 	data = text_to_code('push eax\npop ebx')
 	assert data_to_text(data) == 'push eax;\npop ebx;'
-	data = text_to_code('push eax\npop ebx')
-	data = optimize_code(data)
-	print(data_to_text(data))
+	replace_dict = {}
+	assert code_match(replace_dict, text_to_code('push eax'), text_to_code('push REG0'))
+	replace_dict = {}
+	assert not(code_match(replace_dict, text_to_code('push eax'), text_to_code('push ebx')))
 	print("unittest() ok")
 
 def main(argc, argv):
