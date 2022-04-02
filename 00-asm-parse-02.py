@@ -333,10 +333,6 @@ def simplify_labels(code):
 	if function != None:
 		label_map1[function] = function
 		label_map2[function] = function
-	print('--- label_map1 ---')
-	print(label_map1)
-	print('--- label_map2 ---')
-	print(label_map2)
 	new_code = []
 	for item in code:
 		if item[0] == 'label':
@@ -353,10 +349,10 @@ def split_to_blocks(code):
 	block_code = []
 	iblock = 0;
 	first = True
+	label_to_iblock = {}
+	iblock_to_label = {}
 	for item in code:
 		if item[0] == 'label':
-			global iblock_to_label
-			global label_to_iblock
 			global label_map1
 			label = item[1]
 			label_to_iblock[label] = iblock
@@ -377,11 +373,7 @@ def split_to_blocks(code):
 		if code[0][0] == 'label':
 			label = code[0][1]
 			block['label'] = label
-	print('--- iblock_to_label ---')
-	print(iblock_to_label)
-	print('--- label_to_iblock ---')
-	print(label_to_iblock)
-	return blocks
+	return label_to_iblock, iblock_to_label, blocks
 
 def optimize_code(code):
 	new_list = []
@@ -487,10 +479,18 @@ def get_blocks_in_out(blocks):
 
 def stage1(code):
 	code = optimize_code(code)
-	global label_map1, label_map2
+	global label_map1, label_map2, label_to_iblock, iblock_to_label
 	label_map1, label_map2, code = simplify_labels(code)
-	blocks = split_to_blocks(code)
+	label_to_iblock, iblock_to_label, blocks = split_to_blocks(code)
 	blocks = get_blocks_in_out(blocks)
+	print('--- label_map1 ---')
+	print(label_map1)
+	print('--- label_map2 ---')
+	print(label_map2)
+	print('--- iblock_to_label ---')
+	print(iblock_to_label)
+	print('--- label_to_iblock ---')
+	print(label_to_iblock)
 	return blocks
 
 def stage2(blocks):
