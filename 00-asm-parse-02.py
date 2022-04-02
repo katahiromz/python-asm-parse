@@ -198,8 +198,8 @@ def asm_to_item(addr, hex, ope, operands):
 		return ary
 	return []
 
-def text_to_data(text):
-	data = []
+def text_to_code(text):
+	code = []
 	lines = text.split('\n')
 	for line in lines:
 		line = line.strip()
@@ -231,7 +231,7 @@ def text_to_data(text):
 			field0 = items[0].strip()
 			if (len(items) == 1):
 				if field0[-1] == ':':
-					data.append(['label', field0[0:-1]])
+					code.append(['label', field0[0:-1]])
 					continue
 			field1 = ''
 			if len(items) >= 2:
@@ -244,24 +244,24 @@ def text_to_data(text):
 			ope = items[0]
 		ary = asm_to_item(addr, hex, ope, operands)
 		if (len(ary) > 0):
-			data.append(ary)
+			code.append(ary)
 			continue
 		print('ERROR: invalid line: ' + line)
-	return data
+	return code
 
-def file_to_data(file):
-	data = []
+def file_to_code(file):
+	code = []
 	with open(file, 'r') as fin:
 		text = fin.read()
-		data = text_to_data(text)
-	return data
+		code = text_to_code(text)
+	return code
 
-def simplify_labels(data):
-	global label_map1
-	global label_map2
+def simplify_labels(code):
+	label_map1 = {}
+	label_map2 = {}
 	number = 0
 	global function
-	for item in data:
+	for item in code:
 		if item[0] == 'label':
 			i0 = item[1].find('+')
 			if (i0 == -1):
@@ -277,130 +277,167 @@ def simplify_labels(data):
 	print(label_map1)
 	print('--- label_map2 ---')
 	print(label_map2)
-	new_data = []
-	for item in data:
+	new_code = []
+	for item in code:
 		if item[0] == 'label':
 			item[1] = label_map1[item[1]]
 		elif item[0] == 'jmp':
 			item[2] = label_map1[item[2]]
 		elif item[0] == 'jcc':
 			item[2] = label_map1[item[2]]
-		new_data.append(item)
-	return new_data
+		new_code.append(item)
+	return label_map1, label_map2, new_code
 
-def split_basic_blocks(data):
-	new_data = []
-	ary = []
+def split_to_blocks(code):
+	blocks = []
+	block_code = []
 	iblock = 0;
 	first = True
-	for item in data:
+	for item in code:
 		if item[0] == 'label':
 			global iblock_to_label
 			global label_to_iblock
 			global label_map1
-			label_to_iblock[item[1]] = iblock
-			iblock_to_label[iblock] = item[1]
+			label = item[1]
+			label_to_iblock[label] = iblock
+			iblock_to_label[iblock] = label
 			if first:
 				first = False
-				ary.append(item)
+				block_code.append(item)
 				iblock += 1
 				continue
-			new_data.append(ary)
+			blocks.append({ 'code': block_code, 'iblock':iblock })
 			iblock += 1
-			ary = []
-			ary.append(item)
+			block_code = [item]
 			continue
-		ary.append(item)
-	new_data.append(ary)
+		block_code.append(item)
+	blocks.append({ 'code': block_code, 'iblock':iblock })
+	for block in blocks:
+		code = block['code']
+		if code[0][0] == 'label':
+			label = code[0][1]
+			block['label'] = label
 	print('--- iblock_to_label ---')
 	print(iblock_to_label)
 	print('--- label_to_iblock ---')
 	print(label_to_iblock)
-	return new_data
+	return blocks
 
-def optimize_data_0(data):
-	new_data = []
-	pushing = []
-	for item in data:
+def optimize_code(code):
+	new_list = []
+	for item in code:
 		if item[1] == 'mov':
 			if item[2] == item[3]:
 				continue # nop
-			new_data.append(['=', item[2], item[3]])
+			new_list.append(['=', item[2], item[3]])
 			continue
 		elif item[1] == 'xor':
 			if item[2] == item[3]:
-				new_data.append(['=', item[2], '0'])
+				new_list.append(['=', item[2], '0'])
 				continue
-			new_data.append(['^=', item[2], item[3]])
+			new_list.append(['^=', item[2], item[3]])
 			continue
 		elif item[1] == 'lea':
-			new_data.append(['=', item[2], get_mem_addr(item[3])])
+			new_list.append(['=', item[2], get_mem_addr(item[3])])
 			continue
 		elif item[1] == 'add':
 			if item[2] == item[3]:
-				new_data.append(['*=', item[2], '2'])
+				new_list.append(['*=', item[2], '2'])
 				continue
-			new_data.append(['+=', item[2], item[3]])
+			new_list.append(['+=', item[2], item[3]])
 			continue
 		elif item[1] == 'sub':
-			new_data.append(['-=', item[2], item[3]])
+			new_list.append(['-=', item[2], item[3]])
 			continue
 		elif item[1] == 'mul':
-			new_data.append(['*=', item[2], item[3]])
+			new_list.append(['*=', item[2], item[3]])
 			continue
 		elif item[1] == 'and':
 			if item[2] == item[3]:
-				new_data.append(['=', 'ZF', '(' + item[2] + ' == 0)'])
+				new_list.append(['=', 'ZF', '(' + item[2] + ' == 0)'])
 				continue
-			new_data.append(['&=', item[2], item[3]])
+			new_list.append(['&=', item[2], item[3]])
 			continue
 		elif item[1] == 'xor':
 			if item[2] == item[3]:
-				new_data.append(['=', item[2], '0'])
+				new_list.append(['=', item[2], '0'])
 				continue
-			new_data.append(['^=', item[2], item[3]])
+			new_list.append(['^=', item[2], item[3]])
 			continue
-		new_data.append(item)
-	return new_data
+		new_list.append(item)
+	return new_list
 
 def get_block_type(block):
-	if block[-1][0] == 'ret':
+	code = block['code']
+	if code[-1][0] == 'ret':
 		return 'ret'
-	if block[-1][0] == 'jmp':
+	if code[-1][0] == 'jmp':
 		return 'jmp'
-	if block[-1][0] == 'jcc':
+	if code[-1][0] == 'jcc':
 		return 'jcc'
 	return 'join'
 
-def make_blocks_dict(data):
-	new_data = {}
-	iblock = 0
-	for i in range(0, len(data)):
-		block = data[i];
+def get_blocks_in_out(blocks):
+	come_from = {}
+	go_to = {}
+	for iblock in range(0, len(blocks)):
+		block = blocks[iblock];
 		type = get_block_type(block)
-		new_data[iblock] = {'iblock': iblock, 'data': block, 'type': type }
-		go_out = []
+		code = block['code']
+		block['iblock'] = iblock
+		block['type'] = type
 		if type == 'jmp':
-			go_out.append(label_to_iblock[block[-1][2]])
+			label = code[-1][2]
+			come_from[label_to_iblock[label]] = iblock
+			go_to[iblock] = label_to_iblock[label]
 		elif type == 'jcc':
-			go_out.append(label_to_iblock[block[-1][2]])
-			go_out.append(iblock + 1)
+			label = code[-1][2]
+			come_from[label_to_iblock[label]] = iblock
+			come_from[iblock + 1] = iblock
+			go_to[iblock] = label_to_iblock[label]
 		elif type == 'join':
-			go_out.append(iblock + 1)
-		new_data[iblock]['go_out'] = go_out
-		iblock += 1
-	return new_data
+			come_from[iblock + 1] = iblock
+			go_to[iblock] = iblock + 1
+		elif type == 'ret':
+			go_to[iblock] = -1
+		if block['label'] == function:
+			come_from[iblock] = -1
+		block['go_to'] = go_to
+	for iblock in range(0, len(blocks)):
+		block = blocks[iblock]
+		block['come_from'] = []
+		block['go_to'] = []
+	for iblock in range(0, len(blocks)):
+		block = blocks[iblock]
+		for key, value in come_from.items():
+			if value == iblock:
+				if not(key in block['go_to']):
+					block['go_to'].append(key)
+			if key == iblock:
+				if not(value in block['come_from']):
+					block['come_from'].append(value)
+		for key, value in go_to.items():
+			if key == iblock:
+				if not(value in block['go_to']):
+					block['go_to'].append(value)
+			if value == iblock:
+				if not(key in block['come_from']):
+					block['come_from'].append(key)
+	return blocks
 
-def stage1(data):
-	data = optimize_data_0(data)
-	data = simplify_labels(data)
-	data = split_basic_blocks(data)
-	data = make_blocks_dict(data)
-	return data
-def stage2(data):
-	return data
-def stage3(data):
-	return data
+def stage1(code):
+	code = optimize_code(code)
+	global label_map1, label_map2
+	label_map1, label_map2, code = simplify_labels(code)
+	blocks = split_to_blocks(code)
+	blocks = get_blocks_in_out(blocks)
+	return blocks
+
+def stage2(blocks):
+	return blocks
+
+def stage3(blocks):
+	return blocks
 
 def item_to_text(item):
 	if item[0] == 'label':
@@ -429,7 +466,7 @@ def data_to_text(data):
 		text += item_to_text(item)
 	return text;
 
-def print_data(data):
+def print_blocks(blocks):
 	text = ''
 	if function != None:
 		text += 'def ' + function + '('
@@ -445,33 +482,36 @@ def print_data(data):
 			params = 'void'
 		text += params + ")\n"
 		text += "{\n"
-	for key, value in data.items():
+	for iblock in range(0, len(blocks)):
+		block = blocks[iblock]
 		text += "\n"
-		text += "// Block #" + str(key) + \
-		        ' (type:' + value['type'] + \
-		        ", go_out:" + str(value['go_out']) + \
+		text += "// Block #" + str(iblock) + \
+		        ' (type:' + block['type'] + \
+		        ", come_from:" + str(block['come_from']) + \
+		        ", go_to:" + str(block['go_to']) + \
+		        ", label:" + str(block['label']) + \
 		        ")\n"
-		for item in value['data']:
+		for item in block['code']:
 			text += str(item_to_text(item)) + "\n"
 	if function != None:
 		text += "\n}\n"
 	print(text)
 
 def unittest():
-	data = text_to_data('A = 1')
+	data = text_to_code('A = 1')
 	assert data_to_text(data) == 'A = 1;'
-	data = text_to_data('push eax')
+	data = text_to_code('push eax')
 	assert data_to_text(data) == 'Push eax;'
-	data = text_to_data('pop eax')
+	data = text_to_code('pop eax')
 	assert data_to_text(data) == 'Pop eax;'
-	data = text_to_data('push eax\npop ebx')
+	data = text_to_code('push eax\npop ebx')
 	assert data_to_text(data) == 'Push eax;\nPop ebx;'
-	data = text_to_data('push eax\npop ebx')
-	data = optimize_data_0(data)
+	data = text_to_code('push eax\npop ebx')
+	data = optimize_code(data)
 	print(data_to_text(data))
 	print("unittest() ok")
 
-def main(argv):
+def main(argc, argv):
 	unittest()
 	print('--- spec ---')
 	load_spec("user32.spec", "user32")
@@ -481,14 +521,14 @@ def main(argv):
 	load_spec("ntdll.spec", "ntdll")
 	#print(spec)
 	#print('---')
-	data = file_to_data(argv[1])
-	data = stage1(data)
-	data = stage2(data)
-	data = stage3(data)
-	print('--- data ---')
-	print(data)
-	print('--- print_data ---')
-	print_data(data)
+	code = file_to_code(argv[1])
+	blocks = stage1(code)
+	blocks = stage2(blocks)
+	blocks = stage3(blocks)
+	print('--- blocks ---')
+	print(blocks)
+	print('--- print_blocks ---')
+	print_blocks(blocks)
 
 import sys
-main(sys.argv)
+main(len(sys.argv), sys.argv)
