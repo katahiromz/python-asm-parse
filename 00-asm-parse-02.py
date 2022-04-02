@@ -448,9 +448,9 @@ def item_to_text(item):
 		return 'goto ' + item[2] + ';'
 	elif item[0] == 'stack':
 		if item[1] == 'push':
-			return 'Push ' + item[2] + ';'
+			return 'push ' + item[2] + ';'
 		elif item[1] == 'pop':
-			return 'Pop ' + item[2] + ';'
+			return 'pop ' + item[2] + ';'
 		else:
 			return item
 	elif item[0] == 'ret':
@@ -501,11 +501,11 @@ def unittest():
 	data = text_to_code('A = 1')
 	assert data_to_text(data) == 'A = 1;'
 	data = text_to_code('push eax')
-	assert data_to_text(data) == 'Push eax;'
+	assert data_to_text(data) == 'push eax;'
 	data = text_to_code('pop eax')
-	assert data_to_text(data) == 'Pop eax;'
+	assert data_to_text(data) == 'pop eax;'
 	data = text_to_code('push eax\npop ebx')
-	assert data_to_text(data) == 'Push eax;\nPop ebx;'
+	assert data_to_text(data) == 'push eax;\npop ebx;'
 	data = text_to_code('push eax\npop ebx')
 	data = optimize_code(data)
 	print(data_to_text(data))
