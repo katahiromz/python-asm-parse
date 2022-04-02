@@ -478,6 +478,7 @@ def main(argv):
 	load_spec("kernel32.spec", "kernel32")
 	load_spec("win32k.spec", "win32k")
 	load_spec("imm32.spec", "IMM32")
+	load_spec("ntdll.spec", "ntdll")
 	#print(spec)
 	#print('---')
 	data = file_to_data(argv[1])
