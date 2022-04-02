@@ -572,6 +572,7 @@ def unittest():
 	assert data_to_text(data) == 'push eax;\npop ebx;'
 	replace_dict = {}
 	assert code_match(replace_dict, text_to_code('push eax'), text_to_code('push REG0'))
+	assert replace_dict['REG0'] == 'eax'
 	replace_dict = {}
 	assert not(code_match(replace_dict, text_to_code('push eax'), text_to_code('push ebx')))
 	print("unittest() ok")
