@@ -338,7 +338,7 @@ def optimize_code(code):
 			new_list.append(['^=', item[2], item[3]])
 			continue
 		elif item[1] == 'lea':
-			new_list.append(['=', item[2], get_mem_addr(item[3])])
+			new_list.append(['=', item[2], '(' + get_mem_addr(item[3]) + ')'])
 			continue
 		elif item[1] == 'add':
 			if item[2] == item[3]:
