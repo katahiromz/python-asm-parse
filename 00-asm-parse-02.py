@@ -475,14 +475,14 @@ def get_blocks_in_out(blocks):
 			if value == iblock:
 				if not(key in block['come_from']):
 					block['come_from'].append(key)
-	return blocks
+	return come_from, go_to, blocks
 
 def stage1(code):
 	code = optimize_code(code)
 	global label_map1, label_map2, label_to_iblock, iblock_to_label
 	label_map1, label_map2, code = simplify_labels(code)
 	label_to_iblock, iblock_to_label, blocks = split_to_blocks(code)
-	blocks = get_blocks_in_out(blocks)
+	come_from, go_to, blocks = get_blocks_in_out(blocks)
 	print('--- label_map1 ---')
 	print(label_map1)
 	print('--- label_map2 ---')
@@ -491,6 +491,10 @@ def stage1(code):
 	print(iblock_to_label)
 	print('--- label_to_iblock ---')
 	print(label_to_iblock)
+	print('--- come_from ---')
+	print(come_from)
+	print('--- go_to ---')
+	print(go_to)
 	return blocks
 
 def stage2(blocks):
