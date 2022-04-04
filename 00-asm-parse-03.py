@@ -7,11 +7,6 @@ iblock_to_label = {}
 label_map1 = {}
 label_map2 = {}
 
-tricks = [
-	[ "push REG1\npop REG2", "REG2 = REG1" ],
-	[ "add REG1,REG2", "REG1 = REG1 + REG2" ],
-]
-
 def is_hex(text):
 	for ch in text:
 		if '0' <= ch and ch <= '9':
@@ -199,6 +194,7 @@ def code_match_ex(code0, code1, replace_dict):
 			if not(asm_match(code0[i], code1[i], dict)):
 				return False
 			if len(dict) > 0:
+				code0 = code_replace(code0, dict)
 				code1 = code_replace(code1, dict)
 				replace_dict.update(dict)
 				retry = True
@@ -279,7 +275,9 @@ def parse_asm(addr, hex, ope, operands):
 	if ope == '=':
 		return ['=', 'mov', operands[0], operands[1]]
 	elif ope == 'if-goto':
-		return ['if-goto', operands[0], operands[1], operands[2], operands[3]]
+		ary = ['if-goto']
+		ary.extend(operands)
+		return ary
 	else:
 		type = ''
 		if ope == 'call':
@@ -342,11 +340,16 @@ def text_to_code(text):
 		elif line.find('if') == 0 and line.find('goto') != -1:
 			ope = 'if-goto'
 			import re
-			result = re.match(r'if ?\((.*?) (.*?) (.*?)\) goto ([^ \r\n;]+)', line)
-			if not(result):
-				print('ERROR: invalid line: ' + line)
-				continue
-			operands = [result.group(1), result.group(2), result.group(3), result.group(4)]
+			result = re.match(r'if ?\(!\((.*?) (.*?) (.*?)\)\) goto ([^ \r\n;]+)', line)
+			if result:
+				operands = [result.group(1), result.group(2), result.group(3), result.group(4), '!']
+			else:
+				result = re.match(r'if ?\((.*?) (.*?) (.*?)\) goto ([^ \r\n;]+)', line)
+				if result:
+					operands = [result.group(1), result.group(2), result.group(3), result.group(4)]
+				else:
+					print('ERROR: invalid line: ' + line)
+					continue
 		else:
 			items = line.split(' ')
 			if (len(items) == 0):
@@ -499,13 +502,25 @@ def get_blocks_in_out(blocks):
 def stage1(code):
 	global label_map1, label_map2, label_to_iblock, iblock_to_label
 	label_map1, label_map2, code = simplify_labels(code)
-	code = code_substitute(code, 'mov X0,X0', '')
-	code = code_substitute(code, 'mov X0,X1', 'X0 = X1')
-	code = code_substitute(code, 'push X0\npop X1', 'X1 = X0')
-	code = code_substitute(code, 'xor X0,X0', 'X0 = 0')
-	code = code_substitute(code, 'lea X0,[X1]', 'X0 = X1')
-	code = code_substitute(code, 'cmp X0,X1\nje X2', 'if (X0 == X1) goto X2')
-	code = code_substitute(code, 'X0 = 0\ninc X0', 'X0 = 1')
+	if True:
+		code = code_substitute(code, 'mov X0,X0', '')
+		print("#1")
+		print(code)
+		code = code_substitute(code, 'mov X0,X1', 'X0 = X1')
+		print("#2")
+		print(code)
+		code = code_substitute(code, 'push X0\npop X1', 'X1 = X0')
+		code = code_substitute(code, 'xor X0,X0', 'X0 = 0')
+		code = code_substitute(code, 'lea X0,[X1]', 'X0 = X1')
+		code = code_substitute(code, 'cmp X0,X1\nje X2', 'if (X0 == X1) goto X2')
+		code = code_substitute(code, 'X0 = 0\ninc X0', 'X0 = 1')
+		code = code_substitute(code, 'X0 = X1\npush X0', 'X0 = X1\npush X1')
+		code = code_substitute(code, 'test X0,X0\nje X1', 'if (X0 == 0) goto X1')
+		code = code_substitute(code, 'test X0,X0\njne X1', 'if (X0 != 0) goto X1')
+		code = code_substitute(code, 'test X0,X1\njne X2', 'if (X0 & X1) goto X2')
+		code = code_substitute(code, 'test X0,X1\nje X2', 'if (!(X0 & X1)) goto X2')
+		code = code_substitute(code, 'cmp X0,X1\nje X2', 'if (X0 == X1) goto X2')
+		code = code_substitute(code, 'cmp X0,X1\njne X2', 'if (X0 != X1) goto X2')
 	label_to_iblock, iblock_to_label, blocks = split_to_blocks(code)
 	come_from, go_to, blocks = get_blocks_in_out(blocks)
 	print('--- label_map1 ---')
@@ -545,7 +560,10 @@ def asm_to_text(asm):
 	elif asm[0] == 'ret':
 		return 'return eax or void;'
 	elif asm[0] == 'if-goto':
-		return 'if (' + asm[1] + ' ' + asm[2] + ' ' + asm[3] + ') goto ' + asm[4] + ';'
+		if len(asm) == 5:
+			return 'if (' + asm[1] + ' ' + asm[2] + ' ' + asm[3] + ') goto ' + asm[4] + ';'
+		if len(asm) == 6 and asm[5] == '!':
+			return 'if (!(' + asm[1] + ' ' + asm[2] + ' ' + asm[3] + ')) goto ' + asm[4] + ';'
 	else:
 		return str(asm)
 
