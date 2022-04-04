@@ -277,7 +277,7 @@ def parse_asm(addr, hex, ope, operands):
 			t = s0 + s1 + s2
 			operands[i] = t
 	if ope == '=':
-		return ['=', operands[0], operands[1]]
+		return ['=', 'mov', operands[0], operands[1]]
 	elif ope == 'if-goto':
 		return ['if-goto', operands[0], operands[1], operands[2], operands[3]]
 	else:
@@ -505,6 +505,7 @@ def stage1(code):
 	code = code_substitute(code, 'xor X0,X0', 'X0 = 0')
 	code = code_substitute(code, 'lea X0,[X1]', 'X0 = X1')
 	code = code_substitute(code, 'cmp X0,X1\nje X2', 'if (X0 == X1) goto X2')
+	code = code_substitute(code, 'X0 = 0\ninc X0', 'X0 = 1')
 	label_to_iblock, iblock_to_label, blocks = split_to_blocks(code)
 	come_from, go_to, blocks = get_blocks_in_out(blocks)
 	print('--- label_map1 ---')
@@ -531,7 +532,7 @@ def asm_to_text(asm):
 	if asm[0] == 'label':
 		return asm[1] + ':'
 	elif asm[0] == '=':
-		return asm[1] + ' = ' + asm[2] + ';'
+		return asm[2] + ' = ' + asm[3] + ';'
 	elif asm[0] == 'jmp':
 		return 'goto ' + asm[2] + ';'
 	elif asm[0] == 'stack':
