@@ -90,6 +90,8 @@ def get_mem_size(text):
 		return 2
 	if text[:10] == 'byte ptr [':
 		return 1
+	if text[0] == '[':
+		return 1
 	return 0
 
 def get_mem_addr(text):
@@ -146,6 +148,8 @@ def operand_match(op0, op1, replace_dict):
 				return True
 			replace_dict[op1] = op0
 			return True
+		replace_dict[op1] = op0
+		return True
 	return False
 
 def asm_match(asm0, asm1, replace_dict):
@@ -173,7 +177,7 @@ def asm_replace(asm, key, value):
 	asm = copy.deepcopy(asm)
 	for k in range(len(asm)):
 		import re
-		asm[k] = re.sub('\\b' + key + '\\b', value, asm[k])
+		asm[k] = re.sub(r'\b' + key + r'\b', value, asm[k])
 	return asm
 
 def code_replace(code, replace_dict):
@@ -191,11 +195,12 @@ def code_match_ex(code0, code1, replace_dict):
 	while retry:
 		retry = False
 		for i in range(len(code0)):
-			length = len(replace_dict)
-			if not(asm_match(code0[i], code1[i], replace_dict)):
+			dict = {}
+			if not(asm_match(code0[i], code1[i], dict)):
 				return False
-			if length < len(replace_dict):
-				code1 = code_replace(code1, replace_dict)
+			if len(dict) > 0:
+				code1 = code_replace(code1, dict)
+				replace_dict.update(dict)
 				retry = True
 				break
 	return True
@@ -214,10 +219,12 @@ def code_substitute(code, text0, text1):
 		retry = False
 		for i in range(len(code) - len(code0) + 1):
 			subcode = code[i : i + len(code0)]
-			replace_dict = {}
-			if code_match_ex(subcode, code0, replace_dict):
-				code1 = code_replace(code1, replace_dict)
+			dict = {}
+			if code_match_ex(subcode, code0, dict):
+				code1 = code_replace(code1, dict)
 				code[i : i + len(code0)] = code1
+				retry = True
+				break
 	return code
 
 def load_spec(file, module_name):
@@ -242,7 +249,7 @@ def load_spec(file, module_name):
 					spec[module_name + '!' + func_name] = {'function': func_name, 'module': module_name, 'num_params': num_params}
 				continue
 			import re
-			line = re.sub('\\bstdcall\\b', '', line)
+			line = re.sub(r'\bstdcall\b', '', line)
 			line = line.replace('  ', '')
 			body = line[i2-1:]
 			i3 = body.find('(')
@@ -271,8 +278,10 @@ def parse_asm(addr, hex, ope, operands):
 			operands[i] = t
 	if ope == '=':
 		return ['=', operands[0], operands[1]]
+	elif ope == 'if-goto':
+		return ['if-goto', operands[0], operands[1], operands[2], operands[3]]
 	else:
-		type = 'stack'
+		type = ''
 		if ope == 'call':
 			type = 'call'
 			if operands[0][:11] == 'dword ptr [':
@@ -298,10 +307,7 @@ def parse_asm(addr, hex, ope, operands):
 		elif ope == 'enter' or ope == 'leave':
 			type = 'stack'
 		else:
-			for op in operands:
-				if op == 'esp' or op == 'ebp':
-					type = 'stack'
-					break
+			type = 'insn'
 		asm = [type, ope]
 		asm.extend(operands)
 		return asm
@@ -333,6 +339,14 @@ def text_to_code(text):
 			s1 = line[ieq + 3:].strip()
 			ope = '='
 			operands = [s0, s1]
+		elif line.find('if') == 0 and line.find('goto') != -1:
+			ope = 'if-goto'
+			import re
+			result = re.match(r'if ?\((.*?) (.*?) (.*?)\) goto ([^ \r\n;]+)', line)
+			if not(result):
+				print('ERROR: invalid line: ' + line)
+				continue
+			operands = [result.group(1), result.group(2), result.group(3), result.group(4)]
 		else:
 			items = line.split(' ')
 			if (len(items) == 0):
@@ -424,50 +438,6 @@ def split_to_blocks(code):
 			block['label'] = label
 	return label_to_iblock, iblock_to_label, blocks
 
-def optimize_code(code):
-	new_list = []
-	for item in code:
-		if item[1] == 'mov':
-			if item[2] == item[3]:
-				continue # nop
-			new_list.append(['=', item[2], item[3]])
-			continue
-		elif item[1] == 'xor':
-			if item[2] == item[3]:
-				new_list.append(['=', item[2], '0'])
-				continue
-			new_list.append(['^=', item[2], item[3]])
-			continue
-		elif item[1] == 'lea':
-			new_list.append(['=', item[2], '(' + get_mem_addr(item[3]) + ')'])
-			continue
-		elif item[1] == 'add':
-			if item[2] == item[3]:
-				new_list.append(['*=', item[2], '2'])
-				continue
-			new_list.append(['+=', item[2], item[3]])
-			continue
-		elif item[1] == 'sub':
-			new_list.append(['-=', item[2], item[3]])
-			continue
-		elif item[1] == 'mul':
-			new_list.append(['*=', item[2], item[3]])
-			continue
-		elif item[1] == 'and':
-			if item[2] == item[3]:
-				new_list.append(['=', 'ZF', '(' + item[2] + ' == 0)'])
-				continue
-			new_list.append(['&=', item[2], item[3]])
-			continue
-		elif item[1] == 'xor':
-			if item[2] == item[3]:
-				new_list.append(['=', item[2], '0'])
-				continue
-			new_list.append(['^=', item[2], item[3]])
-			continue
-		new_list.append(item)
-	return new_list
-
 def get_block_type(block):
 	code = block['code']
 	if code[-1][0] == 'ret':
@@ -527,9 +497,14 @@ def get_blocks_in_out(blocks):
 	return come_from, go_to, blocks
 
 def stage1(code):
-	code = optimize_code(code)
 	global label_map1, label_map2, label_to_iblock, iblock_to_label
 	label_map1, label_map2, code = simplify_labels(code)
+	code = code_substitute(code, 'mov X0,X0', '')
+	code = code_substitute(code, 'mov X0,X1', 'X0 = X1')
+	code = code_substitute(code, 'push X0\npop X1', 'X1 = X0')
+	code = code_substitute(code, 'xor X0,X0', 'X0 = 0')
+	code = code_substitute(code, 'lea X0,[X1]', 'X0 = X1')
+	code = code_substitute(code, 'cmp X0,X1\nje X2', 'if (X0 == X1) goto X2')
 	label_to_iblock, iblock_to_label, blocks = split_to_blocks(code)
 	come_from, go_to, blocks = get_blocks_in_out(blocks)
 	print('--- label_map1 ---')
@@ -568,6 +543,8 @@ def asm_to_text(asm):
 			return str(asm)
 	elif asm[0] == 'ret':
 		return 'return eax or void;'
+	elif asm[0] == 'if-goto':
+		return 'if (' + asm[1] + ' ' + asm[2] + ' ' + asm[3] + ') goto ' + asm[4] + ';'
 	else:
 		return str(asm)
 
