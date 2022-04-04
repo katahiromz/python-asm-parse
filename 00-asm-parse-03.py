@@ -190,13 +190,13 @@ def code_match_ex(code0, code1, replace_dict):
 	while retry:
 		retry = False
 		for i in range(len(code0)):
-			dict = {}
-			if not(asm_match(code0[i], code1[i], dict)):
+			dict0 = {}
+			if not(asm_match(code0[i], code1[i], dict0)):
 				return False
-			if len(dict) > 0:
-				code0 = code_replace(code0, dict)
-				code1 = code_replace(code1, dict)
-				replace_dict.update(dict)
+			if len(dict0) > 0:
+				code0 = code_replace(code0, dict0)
+				code1 = code_replace(code1, dict0)
+				replace_dict.update(dict0)
 				retry = True
 				break
 	return True
@@ -215,10 +215,9 @@ def code_substitute(code, text0, text1):
 		retry = False
 		for i in range(len(code) - len(code0) + 1):
 			subcode = code[i : i + len(code0)]
-			dict = {}
-			if code_match_ex(subcode, code0, dict):
-				code1 = code_replace(code1, dict)
-				code[i : i + len(code0)] = code1
+			dict0 = {}
+			if code_match_ex(subcode, code0, dict0):
+				code[i : i + len(code0)] = code_replace(code1, dict0)
 				retry = True
 				break
 	return code
@@ -502,25 +501,21 @@ def get_blocks_in_out(blocks):
 def stage1(code):
 	global label_map1, label_map2, label_to_iblock, iblock_to_label
 	label_map1, label_map2, code = simplify_labels(code)
-	if True:
-		code = code_substitute(code, 'mov X0,X0', '')
-		print("#1")
-		print(code)
-		code = code_substitute(code, 'mov X0,X1', 'X0 = X1')
-		print("#2")
-		print(code)
-		code = code_substitute(code, 'push X0\npop X1', 'X1 = X0')
-		code = code_substitute(code, 'xor X0,X0', 'X0 = 0')
-		code = code_substitute(code, 'lea X0,[X1]', 'X0 = X1')
-		code = code_substitute(code, 'cmp X0,X1\nje X2', 'if (X0 == X1) goto X2')
-		code = code_substitute(code, 'X0 = 0\ninc X0', 'X0 = 1')
-		code = code_substitute(code, 'X0 = X1\npush X0', 'X0 = X1\npush X1')
-		code = code_substitute(code, 'test X0,X0\nje X1', 'if (X0 == 0) goto X1')
-		code = code_substitute(code, 'test X0,X0\njne X1', 'if (X0 != 0) goto X1')
-		code = code_substitute(code, 'test X0,X1\njne X2', 'if (X0 & X1) goto X2')
-		code = code_substitute(code, 'test X0,X1\nje X2', 'if (!(X0 & X1)) goto X2')
-		code = code_substitute(code, 'cmp X0,X1\nje X2', 'if (X0 == X1) goto X2')
-		code = code_substitute(code, 'cmp X0,X1\njne X2', 'if (X0 != X1) goto X2')
+	code = code_substitute(code, 'mov X0,X0', '')
+	code = code_substitute(code, 'mov X0,X1', 'X0 = X1')
+	code = code_substitute(code, 'push X0\npop X1', 'X1 = X0')
+	code = code_substitute(code, 'xor X0,X0', 'X0 = 0')
+	code = code_substitute(code, 'lea X0,[X1]', 'X0 = X1')
+	code = code_substitute(code, 'X0 = 0\ninc X0', 'X0 = 1')
+	code = code_substitute(code, 'X0 = X1\npush X0', 'X0 = X1\npush X1')
+	code = code_substitute(code, 'test X0,X0\nje X1', 'if (X0 == 0) goto X1')
+	code = code_substitute(code, 'test X0,X0\njne X1', 'if (X0 != 0) goto X1')
+	code = code_substitute(code, 'test X0,X1\njne X2', 'if (X0 & X1) goto X2')
+	code = code_substitute(code, 'test X0,X1\nje X2', 'if (!(X0 & X1)) goto X2')
+	code = code_substitute(code, 'cmp X0,X1\nje X2', 'if (X0 == X1) goto X2')
+	code = code_substitute(code, 'cmp X0,X1\njne X2', 'if (X0 != X1) goto X2')
+	code = code_substitute(code, 'push ebp\nebp = esp\nsub esp,X0', 'enter X0')
+	code = code_substitute(code, 'push ebp\nebp = esp', 'enter 0')
 	label_to_iblock, iblock_to_label, blocks = split_to_blocks(code)
 	come_from, go_to, blocks = get_blocks_in_out(blocks)
 	print('--- label_map1 ---')
@@ -615,6 +610,8 @@ def unittest():
 	assert not(code_match(text_to_code('push eax'), text_to_code('push ebx')))
 	assert code_match(text_to_code('mov eax, ebx'), text_to_code('mov REG0, REG1'))
 	assert not(code_match(text_to_code('mov eax, ebx'), text_to_code('mov REG0, REG0')))
+	assert code_match([['insn', 'mov', 'eax', 'dword ptr [ebp+0Ch]']], text_to_code('mov REG0, X0'))
+	assert code_match([['insn', 'lea', 'eax', '[ebp-14h]']], text_to_code('lea X0, [X1]'))
 	print("unittest() ok")
 
 def main(argc, argv):
