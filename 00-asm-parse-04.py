@@ -581,6 +581,8 @@ def stage1(code):
 		code = code_substitute(code, 'add X0,X0', 'X0 = 2 * X0')
 		code = code_substitute(code, 'and X0,0', 'X0 = 0')
 		code = code_substitute(code, 'and X0,X1', 'X0 = X0 & X1')
+		code = code_substitute(code, 'or X0,0FFFFFFFFh', 'X0 = -1')
+		code = code_substitute(code, 'or X0,X1', 'X0 = X0 | X1')
 		code = code_substitute(code, 'not X0', 'X0 = ~X0')
 		code = code_substitute(code, 'push X0\nX1 = X2', 'X1 = X2\npush X0', 'assert X0 !== X1')
 		code = code_substitute(code, 'test X0,X0\nje X1', 'if (X0 == 0) goto X1')
@@ -678,7 +680,7 @@ def print_blocks(blocks):
 	if function != None:
 		text += 'def ' + function + '('
 		if function in spec:
-			num_params = spec[function]['num_params']
+			num_params = int(spec[function]['num_params'])
 		params = ''
 		if num_params == 0:
 			params = 'void'
