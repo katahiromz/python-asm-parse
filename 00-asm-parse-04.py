@@ -168,19 +168,19 @@ def asm_replace(asm, key, value, use_re = True):
 	import copy
 	asm = copy.deepcopy(asm)
 	for k in range(len(asm)):
-		import re
-		if use_re:
+		if key.find('[') == -1 and key.find('(') == -1:
+			import re
 			asm[k] = re.sub(r'\b' + key + r'\b', value, asm[k])
 		else:
 			asm[k] = asm[k].replace(key, value)
 	return asm
 
-def code_replace(code, replace_dict, use_re = True):
+def code_replace(code, replace_dict):
 	import copy
 	code = copy.deepcopy(code)
 	for i in range(len(code)):
 		for key, value in replace_dict.items():
-			code[i] = asm_replace(code[i], key, value, use_re)
+			code[i] = asm_replace(code[i], key, value)
 	return code
 
 def code_match_ex(code0, code1, replace_dict):
@@ -585,15 +585,15 @@ def stage1(code):
 		code = code_substitute(code, 'inc X0', 'X0 = X0 + 1')
 		code = code_substitute(code, 'dec X0', 'X0 = X0 - 1')
 		code = code_substitute(code, 'push X0\nX1 = X2', 'X1 = X2\npush X0', 'assert X0 !== X1')
-		code = code_replace(code, {'dword ptr [ebp+8]': 'ARGV[1]'}, False)
-		code = code_replace(code, {'dword ptr [ebp+0Ch]': 'ARGV[2]'}, False)
-		code = code_replace(code, {'dword ptr [ebp+10h]': 'ARGV[3]'}, False)
-		code = code_replace(code, {'dword ptr [ebp+14h]': 'ARGV[4]'}, False)
-		code = code_replace(code, {'dword ptr [ebp+18h]': 'ARGV[5]'}, False)
-		code = code_replace(code, {'dword ptr [ebp+1Ch]': 'ARGV[6]'}, False)
-		code = code_replace(code, {'dword ptr [ebp+20h]': 'ARGV[7]'}, False)
-		code = code_replace(code, {'dword ptr [ebp+24h]': 'ARGV[8]'}, False)
-		code = code_replace(code, {'dword ptr [ebp+28h]': 'ARGV[9]'}, False)
+		code = code_replace(code, {'dword ptr [ebp+8]': 'ARGV[1]'})
+		code = code_replace(code, {'dword ptr [ebp+0Ch]': 'ARGV[2]'})
+		code = code_replace(code, {'dword ptr [ebp+10h]': 'ARGV[3]'})
+		code = code_replace(code, {'dword ptr [ebp+14h]': 'ARGV[4]'})
+		code = code_replace(code, {'dword ptr [ebp+18h]': 'ARGV[5]'})
+		code = code_replace(code, {'dword ptr [ebp+1Ch]': 'ARGV[6]'})
+		code = code_replace(code, {'dword ptr [ebp+20h]': 'ARGV[7]'})
+		code = code_replace(code, {'dword ptr [ebp+24h]': 'ARGV[8]'})
+		code = code_replace(code, {'dword ptr [ebp+28h]': 'ARGV[9]'})
 	label_to_iblock, iblock_to_label, blocks = split_to_blocks(code)
 	come_from, go_to, blocks = get_blocks_in_out(blocks)
 	print('--- label_map1 ---')
