@@ -650,6 +650,13 @@ def asm_to_text(asm):
 			return 'push ' + asm[2] + ';'
 		elif asm[1] == 'pop':
 			return 'pop ' + asm[2] + ';'
+		elif asm[1] == 'enter':
+			text = 'enter ' + asm[2] + ";\n"
+			if asm[2] == '0':
+				text += 'EBP := [(ret addr), ARGV[1], ...];'
+			else:
+				text += 'EBP := [(local variables ' + asm[2] + ' bytes), (ret. addr.), ARGV[1], ...];'
+			return text
 		else:
 			return str(asm)
 	elif asm[0] == 'ret':
