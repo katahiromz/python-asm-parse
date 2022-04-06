@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import re
+
 spec = {}
 function = None
 num_params = -1
@@ -301,6 +303,8 @@ def parse_asm(addr, hex, ope, operands):
 				operands = [get_mem_addr(operands[0])]
 			else:
 				operands = [operands[0].split(' ')[0]]
+		if ope == 'sub':
+			type = 'call'
 		elif ope == 'jmp':
 			type = 'jmp'
 			if operands[0][:11] == 'dword ptr [':
@@ -349,7 +353,15 @@ def text_to_code(text):
 		ieq = line.find(' = ')
 		addr = ''
 		hex = ''
-		if ieq != -1:
+		import re
+		result = re.match(r'([A-Za-z][A-Za-z0-9_]+?)\((.*)\)', line)
+		if result:
+			ope = 'sub'
+			name = result.group(1)
+			params = result.group(2).split(',')
+			operands = [name]
+			operands.extend(params)
+		elif ieq != -1:
 			s0 = line[:ieq].strip()
 			s1 = line[ieq + 3:].strip()
 			ope = '='
@@ -369,7 +381,6 @@ def text_to_code(text):
 					continue
 		elif line.find('assert') == 0:
 			ope = 'assert'
-			import re
 			result = re.match(r'assert (.*) (===|!==) (.*)', line)
 			if result:
 				operands = [result.group(1), result.group(2), result.group(3)]
@@ -546,7 +557,6 @@ def stage1(code):
 		code = code_substitute(code, 'nop', '')
 		code = code_substitute(code, 'mov X0,X0', '')
 		code = code_substitute(code, 'mov X0,X1', 'X0 = X1')
-		code = code_substitute(code, 'push X0\npop X1', 'X1 = X0')
 		code = code_substitute(code, 'xor X0,X0', 'X0 = 0')
 		code = code_substitute(code, 'lea X0,[X1]', 'X0 = X1')
 		code = code_substitute(code, 'X0 = 0\ninc X0', 'X0 = 1')
@@ -560,6 +570,7 @@ def stage1(code):
 			code = code_substitute(code, 'cmp X0,X1\npush X2', 'push X2\ncmp X0,X1', 'assert X2 !== esp')
 			code = code_substitute(code, 'test X0,X1\nX3 = X4', 'X3 = X4\ntest X0,X1', 'assert X3 !== X0\nassert X3 !== X1')
 			code = code_substitute(code, 'test X0,X1\npush X2', 'push X2\ntest X0,X1', 'assert X2 !== esp')
+			code = code_substitute(code, 'push X0\npop X1', 'X1 = X0')
 			retry = not(code_match(old_code, code))
 		code = code_substitute(code, 'dec X0\nje X1', 'X0 = X0 - 1\nif (X0 == 0) goto X1')
 		code = code_substitute(code, 'dec X0\njne X1', 'X0 = X0 - 1\nif (X0 != 0) goto X1')
@@ -590,6 +601,8 @@ def stage1(code):
 		code = code_substitute(code, 'inc X0', 'X0 = X0 + 1')
 		code = code_substitute(code, 'dec X0', 'X0 = X0 - 1')
 		code = code_substitute(code, 'push X0\nX1 = X2', 'X1 = X2\npush X0', 'assert X0 !== X1')
+		code = code_substitute(code, 'push X0\npop X1', 'X1 = X0')
+		code = code_substitute(code, 'rep movs dword ptr es:[edi],dword ptr [esi]', 'memcpy(edi,esi,ecx)')
 		code = code_replace(code, {'dword ptr [ebp+8]': 'ARGV[1]'})
 		code = code_replace(code, {'dword ptr [ebp+0Ch]': 'ARGV[2]'})
 		code = code_replace(code, {'dword ptr [ebp+10h]': 'ARGV[3]'})
@@ -644,8 +657,12 @@ def asm_to_text(asm):
 			return 'if (' + asm[1] + ' ' + asm[2] + ' ' + asm[3] + ') goto ' + asm[4] + ';'
 		if len(asm) == 6 and asm[5] == '!':
 			return 'if (!(' + asm[1] + ' ' + asm[2] + ' ' + asm[3] + ')) goto ' + asm[4] + ';'
-	else:
-		return str(asm)
+	elif asm[0] == 'call':
+		if asm[1] == 'sub':
+			return asm[2] + '(' + ', '.join(asm[3:]) + ');'
+		if asm[1] == 'function':
+			return 'eax = ' + asm[2] + '(' + ', '.join(asm[:2]) + ');'
+	return str(asm)
 
 def code_to_text(code):
 	text = ''
@@ -703,6 +720,7 @@ def unittest():
 	assert code_match([['insn', 'mov', 'eax', 'dword ptr [ebp+0Ch]']], text_to_code('mov REG0, X0'))
 	assert code_match([['insn', 'lea', 'eax', '[ebp-14h]']], text_to_code('lea X0, [X1]'))
 	assert code_match(text_to_code('test edx,edx\neax = ebx'), text_to_code('test X0,X1\nX3 = X4'))
+	assert code_to_text(code_substitute(text_to_code('push 7\npop ecx'), 'push X0\npop X1', 'X1 = X0')) == 'ecx = 7;'
 	print("unittest() ok")
 
 def main(argc, argv):
