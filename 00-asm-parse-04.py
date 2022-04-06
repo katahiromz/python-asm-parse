@@ -672,13 +672,14 @@ def print_blocks(blocks):
 	for iblock in range(len(blocks)):
 		block = blocks[iblock]
 		text += "\n"
-		text += "// Block #" + str(iblock) + \
-		        ' (type:' + block['type'] + \
-		        ", come_from:" + str(block['come_from']) + \
-		        ", go_to:" + str(block['go_to'])
-		if 'label' in block:
-			text += ", label:" + str(block['label'])
-		text += ")\n"
+		if False:
+			text += "// Block #" + str(iblock) + \
+			        ' (type:' + block['type'] + \
+			        ", come_from:" + str(block['come_from']) + \
+			        ", go_to:" + str(block['go_to'])
+			if 'label' in block:
+				text += ", label:" + str(block['label'])
+			text += ")\n"
 		for asm in block['code']:
 			text += str(asm_to_text(asm)) + "\n"
 	if function != None:
