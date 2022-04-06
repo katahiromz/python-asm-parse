@@ -605,6 +605,7 @@ def stage1(code):
 		code = code_substitute(code, 'push X0\nX1 = X2', 'X1 = X2\npush X0', 'assert X0 !== X1')
 		code = code_substitute(code, 'push X0\npop X1', 'X1 = X0')
 		code = code_substitute(code, 'rep movs dword ptr es:[edi],dword ptr [esi]', 'memcpy(edi,esi,ecx)')
+		code = code_substitute(code, 'X0 = X1\nX2 = X0', 'X0 = X1\nX2 = X1')
 		code = code_replace(code, {'dword ptr [ebp+8]': 'ARGV[1]'})
 		code = code_replace(code, {'dword ptr [ebp+0Ch]': 'ARGV[2]'})
 		code = code_replace(code, {'dword ptr [ebp+10h]': 'ARGV[3]'})
