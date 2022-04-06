@@ -10,6 +10,7 @@ iblock_to_label = {}
 label_map1 = {}
 label_map2 = {}
 istart = 0
+adjacent_pairs = []
 
 def is_hex(text):
 	for ch in text:
@@ -505,8 +506,8 @@ def get_blocks_in_out(blocks):
 			pairs.append([iblock, label_to_iblock[label]])
 		elif type == 'jcc':
 			label = code[-1][2]
-			pairs.append([iblock, label_to_iblock[label]])
 			pairs.append([iblock, iblock + 1])
+			pairs.append([iblock, label_to_iblock[label]])
 		elif type == 'join':
 			pairs.append([iblock, iblock + 1])
 		if 'label' in block and block['label'] == function:
@@ -523,7 +524,7 @@ def get_blocks_in_out(blocks):
 				block['succ'].append(pair[1])
 			if pair[1] == iblock:
 				block['pred'].append(pair[0])
-	return blocks
+	return pairs, blocks
 
 def asm_int(text):
 	if text[-1] == 'h':
@@ -564,32 +565,11 @@ def get_tree_by_inode(tree, inode):
 			return node
 	return None
 
-def get_dominators(blocks, istart, inode):
-	if istart == inode:
-		return [istart]
-	nodes = [inode]
-	for iblock in range(len(blocks)):
-		block = blocks[iblock]
-		if inode == iblock:
-			pred = block['pred']
-			dom0 = None
-			for p in pred:
-				dom1 = get_dominators(blocks, istart, p)
-				if dom0 == None:
-					dom0 = dom1
-				else:
-					ary = []
-					for d in dom0:
-						if d in dom1:
-							ary.append(d)
-					dom0 = ary
-			nodes.extend(dom0)
-	return nodes
-
-def is_dom(blocks, istart, inode0, inode1):
-	if inode0 == inode1:
-		return True
-	return inode0 in get_dominators(blocks, istart, inode1)
+def block_from_iblock(blocks, iblock):
+	for block in blocks:
+		if block['iblock'] == iblock:
+			return block
+	return None
 
 def stage1(code):
 	global num_params
@@ -597,7 +577,8 @@ def stage1(code):
 	global label_map1, label_map2, label_to_iblock, iblock_to_label
 	label_map1, label_map2, code = simplify_labels(code)
 	label_to_iblock, iblock_to_label, blocks = split_to_blocks(code)
-	blocks = get_blocks_in_out(blocks)
+	global adjacent_pairs
+	adjacent_pairs, blocks = get_blocks_in_out(blocks)
 	for iblock in range(len(blocks)):
 		block = blocks[iblock]
 		code = block['code']
