@@ -441,11 +441,11 @@ def simplify_labels(code):
 		label_map2[function] = function
 	new_code = []
 	for item in code:
-		if item[0] == 'label':
+		if item[0] == 'label' and item[1] in label_map1:
 			item[1] = label_map1[item[1]]
-		elif item[0] == 'jmp':
+		elif item[0] == 'jmp' and item[2] in label_map1:
 			item[2] = label_map1[item[2]]
-		elif item[0] == 'jcc':
+		elif item[0] == 'jcc' and item[2] in label_map1:
 			item[2] = label_map1[item[2]]
 		new_code.append(item)
 	return label_map1, label_map2, new_code
@@ -502,13 +502,17 @@ def get_blocks_in_out(blocks):
 		block['type'] = type
 		if type == 'jmp':
 			label = code[-1][2]
-			come_from[label_to_iblock[label]] = iblock
-			go_to[iblock] = label_to_iblock[label]
+			if label in label_to_iblock:
+				come_from[label_to_iblock[label]] = iblock
+			if label in label_to_iblock:
+				go_to[iblock] = label_to_iblock[label]
 		elif type == 'jcc':
 			label = code[-1][2]
-			come_from[label_to_iblock[label]] = iblock
+			if label in label_to_iblock:
+				come_from[label_to_iblock[label]] = iblock
 			come_from[iblock + 1] = iblock
-			go_to[iblock] = label_to_iblock[label]
+			if label in label_to_iblock:
+				go_to[iblock] = label_to_iblock[label]
 		elif type == 'join':
 			come_from[iblock + 1] = iblock
 			go_to[iblock] = iblock + 1
@@ -542,7 +546,7 @@ def get_blocks_in_out(blocks):
 def code_check_num_params(code):
 	for i in range(len(code)):
 		asm = code[i]
-		if asm[0] == 'ret' and len(asm) == 3:
+		if asm[0] == 'ret' and len(asm) == 3 and asm[2] != '':
 			return int(int(asm[2]) / 4)
 	return -1
 
@@ -602,6 +606,8 @@ def stage1(code):
 		code = code_substitute(code, 'sub X0,X1', 'X0 = X0 - X1')
 		code = code_substitute(code, 'inc X0', 'X0 = X0 + 1')
 		code = code_substitute(code, 'dec X0', 'X0 = X0 - 1')
+		code = code_substitute(code, 'shl X0,X1', 'X0 = X0 << X1')
+		code = code_substitute(code, 'shr X0,X1', 'X0 = X0 >> X1')
 		code = code_substitute(code, 'push X0\nX1 = X2', 'X1 = X2\npush X0', 'assert X0 !== X1')
 		code = code_substitute(code, 'push X0\npop X1', 'X1 = X0')
 		code = code_substitute(code, 'rep movs dword ptr es:[edi],dword ptr [esi]', 'memcpy(edi,esi,ecx)')
