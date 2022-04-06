@@ -543,11 +543,17 @@ def get_blocks_in_out(blocks):
 					block['come_from'].append(key)
 	return come_from, go_to, blocks
 
+def asm_int(text):
+	if text[-1] == 'h':
+		return int(text[0:-1], 16)
+	else:
+		return int(text)
+
 def code_check_num_params(code):
 	for i in range(len(code)):
 		asm = code[i]
 		if asm[0] == 'ret' and len(asm) == 3 and asm[2] != '':
-			return int(int(asm[2]) / 4)
+			return int(asm_int(asm[2]) / 4)
 	return -1
 
 def stage1(code):
@@ -622,6 +628,7 @@ def stage1(code):
 		code = code_replace(code, {'dword ptr [ebp+20h]': 'ARGV[7]'})
 		code = code_replace(code, {'dword ptr [ebp+24h]': 'ARGV[8]'})
 		code = code_replace(code, {'dword ptr [ebp+28h]': 'ARGV[9]'})
+		code = code_replace(code, {'0FFFFFFFFh': '-1'})
 	label_to_iblock, iblock_to_label, blocks = split_to_blocks(code)
 	come_from, go_to, blocks = get_blocks_in_out(blocks)
 	print('--- label_map1 ---')
@@ -659,9 +666,9 @@ def asm_to_text(asm):
 		elif asm[1] == 'enter':
 			text = 'enter ' + asm[2] + ";\n"
 			if asm[2] == '0':
-				text += 'EBP := [(ret addr), ARGV[1], ...];'
+				text += '//EBP := [(ret addr), ARGV[1], ...];'
 			else:
-				text += 'EBP := [(local variables ' + asm[2] + ' bytes), (ret. addr.), ARGV[1], ...];'
+				text += '//EBP := [(local variables ' + asm[2] + ' bytes), (ret. addr.), ARGV[1], ...];'
 			return text
 		else:
 			return str(asm)
