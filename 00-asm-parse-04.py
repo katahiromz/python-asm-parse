@@ -394,6 +394,9 @@ def text_to_code(text):
 				items = items[2:]
 			operands = ' '.join(items[1:]).split(',')
 			ope = items[0]
+			if ope == 'rep':
+				operands = [items[1]]
+				operands.extend(' '.join(items[2:]).split(','))
 		asm = parse_asm(addr, hex, ope, operands)
 		if (len(asm) > 0):
 			code.append(asm)
@@ -547,6 +550,8 @@ def stage1(code):
 		code = code_substitute(code, 'xor X0,X0', 'X0 = 0')
 		code = code_substitute(code, 'lea X0,[X1]', 'X0 = X1')
 		code = code_substitute(code, 'X0 = 0\ninc X0', 'X0 = 1')
+		code = code_substitute(code, 'neg X0\nsbb X0,X0\nneg X0', 'X0 = !!X0')
+		code = code_substitute(code, 'neg X0\nsbb X0,X0', 'X0 = X0 ? -1 : 0')
 		retry = True
 		while retry:
 			import copy
