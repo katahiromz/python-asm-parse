@@ -2,6 +2,7 @@
 
 spec = {}
 function = None
+num_params = -1
 label_to_iblock = {}
 iblock_to_label = {}
 label_map1 = {}
@@ -524,7 +525,16 @@ def get_blocks_in_out(blocks):
 					block['come_from'].append(key)
 	return come_from, go_to, blocks
 
+def code_check_num_params(code):
+	for i in range(len(code)):
+		asm = code[i]
+		if asm[0] == 'ret' and len(asm) == 3:
+			return int(int(asm[2]) / 4)
+	return -1
+
 def stage1(code):
+	global num_params
+	num_params = code_check_num_params(code)
 	global label_map1, label_map2, label_to_iblock, iblock_to_label
 	label_map1, label_map2, code = simplify_labels(code)
 	if True:
@@ -642,18 +652,21 @@ def code_to_text(code):
 
 def print_blocks(blocks):
 	text = ''
+	global num_params
 	if function != None:
 		text += 'def ' + function + '('
-		num_params = 0
 		if function in spec:
 			num_params = spec[function]['num_params']
 		params = ''
-		for i in range(num_params):
-			if params != '':
-				params += ', '
-			params += 'ARGV[' + str(i + 1) + ']'
 		if num_params == 0:
 			params = 'void'
+		elif num_params == -1:
+			params = '...'
+		else:
+			for i in range(num_params):
+				if params != '':
+					params += ', '
+				params += 'ARGV[' + str(i + 1) + ']'
 		text += params + ")\n"
 		text += "{\n"
 	for iblock in range(len(blocks)):
