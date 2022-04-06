@@ -715,7 +715,8 @@ def main(argc, argv):
 	blocks = stage2(blocks)
 	blocks = stage3(blocks)
 	print('--- blocks ---')
-	print(blocks)
+	for block in blocks:
+		print(block['code'])
 	print('--- print_blocks ---')
 	print_blocks(blocks)
 
