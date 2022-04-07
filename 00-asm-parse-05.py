@@ -10,7 +10,7 @@ iblock_to_label = {}
 label_map1 = {}
 label_map2 = {}
 istart = 0
-adjacent_pairs = []
+edges = []
 
 def is_hex(text):
 	for ch in text:
@@ -429,10 +429,11 @@ def simplify_labels(code):
 	label_map2 = {}
 	number = 0
 	global function
+	function = None
 	for item in code:
 		if item[0] == 'label':
 			i0 = item[1].find('+')
-			if (i0 == -1):
+			if i0 == -1 and function is None:
 				function = item[1]
 				continue
 			label_map1[item[1]] = 'label' + str(number)
@@ -494,7 +495,7 @@ def get_block_type(block):
 	return 'join'
 
 def get_blocks_in_out(blocks):
-	pairs = []
+	edges = []
 	for iblock in range(len(blocks)):
 		block = blocks[iblock];
 		type = get_block_type(block)
@@ -503,13 +504,13 @@ def get_blocks_in_out(blocks):
 		block['type'] = type
 		if type == 'jmp':
 			label = code[-1][2]
-			pairs.append([iblock, label_to_iblock[label]])
+			edges.append([iblock, label_to_iblock[label]])
 		elif type == 'jcc':
 			label = code[-1][2]
-			pairs.append([iblock, iblock + 1])
-			pairs.append([iblock, label_to_iblock[label]])
+			edges.append([iblock, iblock + 1])
+			edges.append([iblock, label_to_iblock[label]])
 		elif type == 'join':
-			pairs.append([iblock, iblock + 1])
+			edges.append([iblock, iblock + 1])
 		if 'label' in block and block['label'] == function:
 			global istart
 			istart = iblock
@@ -519,12 +520,12 @@ def get_blocks_in_out(blocks):
 		block['succ'] = []
 	for iblock in range(len(blocks)):
 		block = blocks[iblock]
-		for pair in pairs:
+		for pair in edges:
 			if pair[0] == iblock:
 				block['succ'].append(pair[1])
 			if pair[1] == iblock:
 				block['pred'].append(pair[0])
-	return pairs, blocks
+	return edges, blocks
 
 def asm_int(text):
 	if text[-1] == 'h':
@@ -571,17 +572,36 @@ def block_from_iblock(blocks, iblock):
 			return block
 	return None
 
+def dominators(blocks, inode):
+	global istart
+	ret = [inode]
+	if istart == inode:
+		return ret
+	block = block_from_iblock(blocks, inode)
+	pred = block['pred']
+	dom = None
+	for p in pred:
+		dom0 = dominators(blocks, p)
+		if dom is None:
+			dom = dom0
+		else:
+			dom = list(set(dom) & set(dom0))
+	if dom is None:
+		return ret
+	return list(set(ret) | set(dom))
+
 def stage1(code):
 	global num_params
 	num_params = code_check_num_params(code)
 	global label_map1, label_map2, label_to_iblock, iblock_to_label
 	label_map1, label_map2, code = simplify_labels(code)
 	label_to_iblock, iblock_to_label, blocks = split_to_blocks(code)
-	global adjacent_pairs
-	adjacent_pairs, blocks = get_blocks_in_out(blocks)
+	global edges
+	edges, blocks = get_blocks_in_out(blocks)
 	for iblock in range(len(blocks)):
 		block = blocks[iblock]
 		code = block['code']
+		assert iblock == block['iblock']
 		if True:
 			code = code_substitute(code, 'push ebp\nmov ebp,esp\nsub esp,X0', 'enter X0')
 			code = code_substitute(code, 'push ebp\nmov ebp,esp', 'enter 0')
@@ -738,7 +758,8 @@ def print_blocks(blocks):
 			text += "// Block #" + str(iblock) + \
 			        ' (type:' + block['type'] + \
 			        ", pred:" + str(block['pred']) + \
-			        ", succ:" + str(block['succ'])
+			        ", succ:" + str(block['succ']) + \
+			        ", dom:" + str(dominators(blocks, iblock))
 			if 'label' in block:
 				text += ", label:" + str(block['label'])
 			text += ")\n"
@@ -763,6 +784,32 @@ def unittest():
 	assert code_to_text(code_substitute(text_to_code('push 7\npop ecx'), 'push X0\npop X1', 'X1 = X0')) == 'ecx = 7;'
 	print("unittest() ok")
 
+def text_code():
+	global istart
+	istart = 0
+	return "\n".join([
+		'Function:',
+		'call test1',
+		'cmp eax, 0',
+		'je label4',
+		'label0:',
+		'call test2',
+		'cmp eax, 0',
+		'ja label2',
+		'label1:',
+		'esi = 0',
+		'jmp label3',
+		'label2:',
+		'edi = 123',
+		'esi = 456',
+		'ecx = 32',
+		'memcpy(edi, esi, ecx)',
+		'label3:',
+		'eax = esi',
+		'label4:',
+		'ret'
+	])
+
 def main(argc, argv):
 	unittest()
 	print('--- spec ---')
@@ -773,7 +820,10 @@ def main(argc, argv):
 	load_spec("ntdll.spec", "ntdll")
 	#print(spec)
 	#print('---')
-	code = file_to_code(argv[1])
+	if True:
+		code = text_to_code(text_code())
+	else:
+		code = file_to_code(argv[1])
 	blocks = stage1(code)
 	blocks = stage2(blocks)
 	blocks = stage3(blocks)
