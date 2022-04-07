@@ -780,6 +780,7 @@ def stage1(code):
 			code = code_replace(code, {'dword ptr [ebp+24h]': 'ARGV[8]'})
 			code = code_replace(code, {'dword ptr [ebp+28h]': 'ARGV[9]'})
 			code = code_replace(code, {'0FFFFFFFFh': '-1'})
+			code = code_replace(code, {'dword ptr fs:[00000018h]': 'NtCurrentTeb()'})
 		block['code'] = code
 	#print('--- label_map1 ---')
 	#print(label_map1)
