@@ -394,7 +394,7 @@ def text_to_code(text):
 		import re
 		line = re.sub(r'//.*$', r'', line);
 		line = re.sub(r'#.*$', r'', line);
-		line = re.sub(r'/\*.*\*/$', r'', line);
+		line = re.sub(r'/\*.*?\*/$', r'', line);
 		if line == '' or line == '---':
 			continue
 		if line[:3] == 'kd>':
