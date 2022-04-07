@@ -964,32 +964,31 @@ def unittest():
 def text_code():
 	global istart
 	istart = 0
-	return "\n".join([
-		'Function:',
-		'call test1',
-		'cmp eax, 0',
-		'je label4',
-		'label0:',
-		'call test2',
-		'cmp eax, 0',
-		'ja label2',
-		'label1:',
-		'esi = 0',
-		'jmp label3',
-		'label2:',
-		'edi = 123',
-		'esi = 456',
-		'ecx = 32',
-		'memcpy(edi, esi, ecx)',
-		'label3:',
-		'eax = esi',
-		'label4:',
-		'eax = eax - 1',
-		'cmp eax,0',
-		'jne label4',
-		'label5:',
-		'ret'
-	])
+	return ("""
+Function:
+call test1
+cmp eax, 0
+je label4
+label0:
+call test2
+cmp eax, 0
+ja label2
+label1:
+esi = 0
+jmp label3
+label2:
+edi = 123
+esi = 456
+ecx = 32
+memcpy(edi, esi, ecx)
+label3:
+eax = esi
+label4:
+eax = eax - 1
+cmp eax,0
+jne label4
+label5:
+ret""")
 
 def main(argc, argv):
 	unittest()
