@@ -272,28 +272,53 @@ def load_spec(file, module_name):
 				line = line[:i1]
 			line = line.replace('-stub ', '')
 			line = line.replace('-norelay ', '')
+			convention = ''
 			i2 = line.find('stdcall')
-			if i2 == -1:
-				i5 = line.find(', ')
-				if i5 != -1:
-					items = line.split(',')
-					func_name = items[0].strip()
-					num_params = items[1].strip()
-					spec[module_name + '!' + func_name] = {'function': func_name, 'module': module_name, 'num_params': num_params}
+			if i2 != -1:
+				convention = 'stdcall'
+			else:
+				i2 = line.find('cdecl')
+				if i2 != -1:
+					convention = 'cdecl'
+			if convention != '':
+				import re
+				if convention == 'stdcall':
+					line = re.sub(r'\bstdcall\b', '', line)
+				elif convention == 'cdecl':
+					line = re.sub(r'\bcdecl\b', '', line)
+				else:
+					raise
+				line = line.replace('  ', '')
+				body = line[i2-1:]
+				i3 = body.find('(')
+				i4 = body.find(')')
+				if i3 == -1 or i4 == -1:
+					continue
+				func_name = body[:i3].strip()
+				params = body[i3+1:i4].split(' ')
+				if len(params) == 1 and params[0] == '':
+					params = []
+				spec[module_name + '!' + func_name] = {
+					'function': func_name,
+					'module': module_name,
+					'num_params': len(params),
+					'params': params,
+					'convention': convention
+				}
 				continue
-			import re
-			line = re.sub(r'\bstdcall\b', '', line)
-			line = line.replace('  ', '')
-			body = line[i2-1:]
-			i3 = body.find('(')
-			i4 = body.find(')')
-			if i3 == -1 or i4 == -1:
-				continue
-			func_name = body[:i3].strip()
-			params = body[i3+1:i4].split(' ')
-			if len(params) == 1 and params[0] == '':
-				params = []
-			spec[module_name + '!' + func_name] = {'function': func_name, 'module': module_name, 'num_params': len(params), 'params': params}
+			i5 = line.find(', ')
+			if i5 != -1:
+				items = line.split(',')
+				func_name = items[0].strip()
+				num_params = items[1].strip()
+				convention = 'stdcall'
+				spec[module_name + '!' + func_name] = {
+					'function': func_name,
+					'module': module_name,
+					'num_params': num_params,
+					'convention': convention
+				}
+			continue
 
 def parse_asm(addr, hex, ope, operands):
 	for i in range(len(operands)):
