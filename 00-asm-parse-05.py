@@ -838,8 +838,9 @@ def print_blocks(blocks):
 			        ' (type:' + block['type'] + \
 			        ", pred:" + str(block['pred']) + \
 			        ", succ:" + str(block['succ']) + \
-			        ", dom:" + str(dominators(blocks, iblock)) + \
-			        ", cond:(" + str(block['condition']) + ')'
+			        ", dom:" + str(dominators(blocks, iblock))
+			if 'condition' in block:
+				text += ", cond:(" + str(block['condition']) + ')'
 			if 'label' in block:
 				text += ", label:" + str(block['label'])
 			text += ")\n"
