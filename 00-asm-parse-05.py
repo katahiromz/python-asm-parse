@@ -623,6 +623,8 @@ def get_not_condition(cond):
 			ope = '>'
 		elif ope == '>=':
 			ope = '<'
+		elif ope == '&':
+			return '!(' + left + ' ' + ope + ' ' + right + ')'
 		else:
 			raise
 		return left + ' ' + ope + ' ' + right
