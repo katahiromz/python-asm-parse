@@ -590,6 +590,58 @@ def dominators(blocks, inode):
 		return ret
 	return list(set(ret) | set(dom))
 
+def get_ifgoto_condition(asm):
+	if len(asm) == 5:
+		return asm[1] + ' ' + asm[2] + ' ' + asm[3]
+	if len(asm) == 6 and asm[5] == '!':
+		return '!(' + asm[1] + ' ' + asm[2] + ' ' + asm[3] + ')'
+
+def get_not_condition(cond):
+	cond = cond.strip()
+	if cond == 'TRUE' or cond == '':
+		return 'FALSE'
+	if cond == 'FALSE':
+		return 'TRUE'
+	import re
+	result = re.match(r'!\((.*?) (.*?) (.*?)\)', cond)
+	if result:
+		return result.group(1) + ' ' + result.group(2) + '  ' + result.group(3)
+	result = re.match(r'(.*?) (.*?) (.*?)', cond)
+	if result:
+		left = result.group(1)
+		ope = result.group(2)
+		right = result.group(3)
+		if ope == '==':
+			ope = '!='
+		elif ope == '!=':
+			ope = '=='
+		elif ope == '<':
+			ope = '>='
+		elif ope == '>':
+			ope = '<='
+		elif ope == '<=':
+			ope = '>'
+		elif ope == '>=':
+			ope = '<'
+		else:
+			raise
+		return left + ' ' + ope + ' ' + right
+	raise
+
+def is_control_flow_ok(blocks):
+	for block in blocks:
+		code = block['code']
+		type = block['type']
+		block['condition'] = ''
+		if type == 'jcc':
+			if code[-1][0] != 'if-goto':
+				return False
+			block['condition'] = get_ifgoto_condition(code[-1])
+		if type == 'jmp':
+			if code[-1][0] != 'jmp':
+				return False
+	return True
+
 def stage1(code):
 	global num_params
 	num_params = code_check_num_params(code)
@@ -691,7 +743,24 @@ def stage1(code):
 	print(label_to_iblock)
 	return blocks
 
+def blocks_add_flags(blocks):
+	for block in blocks:
+		block['flag'] = False
+	return blocks
+
+def edges_add_flags(edges):
+	new_edges = []
+	for edge in edges:
+		new_edges.append([edge[0], edge[1], False])
+	return new_edges
+
 def stage2(blocks):
+	global edges
+	edges = edges_add_flags(edges)
+	blocks = blocks_add_flags(blocks)
+	global istart
+	if is_control_flow_ok(blocks):
+		pass
 	return blocks
 
 def stage3(blocks):
@@ -723,10 +792,7 @@ def asm_to_text(asm):
 	elif asm[0] == 'assert':
 		return 'assert ' + asm[1] + ' ' + asm[2] + ' ' + asm[3] + ';'
 	elif asm[0] == 'if-goto':
-		if len(asm) == 5:
-			return 'if (' + asm[1] + ' ' + asm[2] + ' ' + asm[3] + ') goto ' + asm[4] + ';'
-		if len(asm) == 6 and asm[5] == '!':
-			return 'if (!(' + asm[1] + ' ' + asm[2] + ' ' + asm[3] + ')) goto ' + asm[4] + ';'
+		return 'if (' + get_ifgoto_condition(asm) + ') goto ' + asm[4] + ';'
 	elif asm[0] == 'call':
 		if asm[1] == 'sub':
 			return asm[2] + '(' + ', '.join(asm[3:]) + ');'
@@ -769,7 +835,8 @@ def print_blocks(blocks):
 			        ' (type:' + block['type'] + \
 			        ", pred:" + str(block['pred']) + \
 			        ", succ:" + str(block['succ']) + \
-			        ", dom:" + str(dominators(blocks, iblock))
+			        ", dom:" + str(dominators(blocks, iblock)) + \
+			        ", cond:(" + str(block['condition']) + ')'
 			if 'label' in block:
 				text += ", label:" + str(block['label'])
 			text += ")\n"
