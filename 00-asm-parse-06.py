@@ -391,6 +391,10 @@ def text_to_code(text):
 	lines = text.split('\n')
 	for line in lines:
 		line = line.strip()
+		import re
+		line = re.sub(r'//.*$', r'', line);
+		line = re.sub(r'#.*$', r'', line);
+		line = re.sub(r'/\*.*\*/$', r'', line);
 		if line == '' or line == '---':
 			continue
 		if line[:3] == 'kd>':
@@ -407,7 +411,6 @@ def text_to_code(text):
 		ieq = line.find(' = ')
 		addr = ''
 		hex = ''
-		import re
 		result = re.match(r'([A-Za-z][A-Za-z0-9_]+?)\((.*)\)', line)
 		if result:
 			ope = 'sub'

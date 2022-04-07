@@ -5,3 +5,4 @@
 @ stdcall FindOrLoadImeDpi(ptr)
 @ stdcall ImmLocalAlloc(long long)
 @ stdcall PtiCurrent()
+@ stdcall Internal_CtfImeDestroyInputContext(ptr)
