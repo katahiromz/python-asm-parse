@@ -2,6 +2,7 @@
 
 import re
 
+alias = {}
 spec = {}
 function = None
 num_params = -1
@@ -242,6 +243,22 @@ def code_substitute(code, text0, text1, assert_text = ''):
 					break
 	return code
 
+def load_alias(file):
+	global alias
+	with open(file, 'r') as fin:
+		lines = fin.read().split('\n')
+		for line in lines:
+			i0 = line.find('#')
+			if i0 != -1:
+				line = line[:i0]
+			i1 = line.find(';')
+			if i1 != -1:
+				line = line[:i1]
+			i2 = line.find(' --> ')
+			if i2 == -1:
+				continue
+			alias[line[:i2]] = line[i2+5:]
+
 def load_spec(file, module_name):
 	global spec
 	with open(file, 'r') as fin:
@@ -254,6 +271,7 @@ def load_spec(file, module_name):
 			if i1 != -1:
 				line = line[:i1]
 			line = line.replace('-stub ', '')
+			line = line.replace('-norelay ', '')
 			i2 = line.find('stdcall')
 			if i2 == -1:
 				i5 = line.find(', ')
@@ -737,14 +755,14 @@ def stage1(code):
 			code = code_replace(code, {'dword ptr [ebp+28h]': 'ARGV[9]'})
 			code = code_replace(code, {'0FFFFFFFFh': '-1'})
 		block['code'] = code
-	print('--- label_map1 ---')
-	print(label_map1)
-	print('--- label_map2 ---')
-	print(label_map2)
-	print('--- iblock_to_label ---')
-	print(iblock_to_label)
-	print('--- label_to_iblock ---')
-	print(label_to_iblock)
+	#print('--- label_map1 ---')
+	#print(label_map1)
+	#print('--- label_map2 ---')
+	#print(label_map2)
+	#print('--- iblock_to_label ---')
+	#print(iblock_to_label)
+	#print('--- label_to_iblock ---')
+	#print(label_to_iblock)
 	return blocks
 
 def blocks_add_flags(blocks):
@@ -758,7 +776,49 @@ def edges_add_flags(edges):
 		new_edges.append([edge[0], edge[1], False])
 	return new_edges
 
+def blocks_replace_calls(blocks):
+	for i in range(len(blocks)):
+		block = blocks[i]
+		iblock = block['iblock']
+		retry = True
+		while retry:
+			retry = False
+			code = block['code']
+			for k in range(len(code)):
+				asm = code[k]
+				if asm[1] != 'call':
+					continue
+				func = asm[2]
+				global alias, spec
+				if func in alias:
+					func = alias[func]
+				if not(func in spec):
+					continue
+				num_params = int(spec[func]['num_params'])
+				if num_params >= 0:
+					valid = True
+					#print("FOUND: " + func + ": " + str(num_params))
+					pushing = []
+					for k2 in range(k - num_params, k):
+						asm2 = code[k2]
+						if asm2[1] != 'push':
+							valid = False
+							break
+						pushing.append(asm2[2])
+					if valid:
+						pushing.reverse();
+						text = 'eax = ' + func + '('
+						text += ", ".join(pushing)
+						text += ')'
+						code0 = text_to_code(text)
+						code[k - num_params : k + 1] = code0
+						retry = True
+						break
+			block['code'] = code_substitute(code, 'push X0\nX1 = X2', 'X1 = X2\npush X0', 'assert X0 !== X1')
+	return blocks
+
 def stage2(blocks):
+	blocks = blocks_replace_calls(blocks)
 	global edges
 	edges = edges_add_flags(edges)
 	blocks = blocks_add_flags(blocks)
@@ -899,13 +959,16 @@ def text_code():
 
 def main(argc, argv):
 	unittest()
+	print('--- alias ---')
+	load_alias('alias.alias')
 	print('--- spec ---')
 	load_spec("user32.spec", "user32")
 	load_spec("kernel32.spec", "kernel32")
 	load_spec("win32k.spec", "win32k")
 	load_spec("imm32.spec", "IMM32")
 	load_spec("ntdll.spec", "ntdll")
-	#print(spec)
+	load_spec("imm32_undoc.spec", "IMM32")
+	print(spec)
 	#print('---')
 	if argc >= 2:
 		code = file_to_code(argv[1])
