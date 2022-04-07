@@ -169,7 +169,7 @@ def asm_match(asm0, asm1, replace_dict):
 			return False
 	return True
 
-def asm_replace(asm, key, value, use_re = True):
+def asm_replace(asm, key, value):
 	import copy
 	asm = copy.deepcopy(asm)
 	for k in range(len(asm)):
@@ -187,6 +187,14 @@ def code_replace(code, replace_dict):
 		for key, value in replace_dict.items():
 			code[i] = asm_replace(code[i], key, value)
 	return code
+
+def asm_replace2(asm, key, value):
+	import copy
+	asm = copy.deepcopy(asm)
+	for k in range(len(asm)):
+		import re
+		asm[k] = re.sub(key, value, asm[k])
+	return asm
 
 def code_match_ex(code0, code1, replace_dict):
 	if len(code0) != len(code1):
@@ -690,6 +698,15 @@ def is_control_flow_ok(blocks):
 				return False
 	return True
 
+def code_convert_global_vars(code):
+	import copy
+	code = copy.deepcopy(code)
+	for i in range(len(code)):
+		asm = code[i]
+		asm = asm_replace2(asm, r'(byte|word|dword) ptr \[(.*?)!(.*?)\]', r'(\1)\2!\3')
+		code[i] = asm
+	return code
+
 def stage1(code):
 	global num_params
 	num_params = code_check_num_params(code)
@@ -703,6 +720,7 @@ def stage1(code):
 		code = block['code']
 		assert iblock == block['iblock']
 		if True:
+			code = code_convert_global_vars(code)
 			code = code_substitute(code, 'push ebp\nmov ebp,esp\nsub esp,X0', 'enter X0')
 			code = code_substitute(code, 'push ebp\nmov ebp,esp', 'enter 0')
 			code = code_substitute(code, 'nop', '')
