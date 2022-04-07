@@ -707,6 +707,16 @@ def code_convert_global_vars(code):
 		code[i] = asm
 	return code
 
+def code_convert_hex_style(code):
+	import copy
+	code = copy.deepcopy(code)
+	for i in range(len(code)):
+		asm = code[i]
+		asm = asm_replace2(asm, r'\b(0*)([0-9A-F]+)h\b', r'0x\2')
+		asm = asm_replace2(asm, r'\b0x(0*)([0-9A-F]+)\b', r'0x\2')
+		code[i] = asm
+	return code
+
 def stage1(code):
 	global num_params
 	num_params = code_check_num_params(code)
@@ -721,6 +731,7 @@ def stage1(code):
 		assert iblock == block['iblock']
 		if True:
 			code = code_convert_global_vars(code)
+			code = code_convert_hex_style(code)
 			code = code_substitute(code, 'push ebp\nmov ebp,esp\nsub esp,X0', 'enter X0')
 			code = code_substitute(code, 'push ebp\nmov ebp,esp', 'enter 0')
 			code = code_substitute(code, 'nop', '')
@@ -756,7 +767,7 @@ def stage1(code):
 			code = code_substitute(code, 'add X0,X0', 'X0 = 2 * X0')
 			code = code_substitute(code, 'and X0,0', 'X0 = 0')
 			code = code_substitute(code, 'and X0,X1', 'X0 = X0 & X1')
-			code = code_substitute(code, 'or X0,0FFFFFFFFh', 'X0 = -1')
+			code = code_substitute(code, 'or X0,0xFFFFFFFF', 'X0 = -1')
 			code = code_substitute(code, 'or X0,X1', 'X0 = X0 | X1')
 			code = code_substitute(code, 'not X0', 'X0 = ~X0')
 			code = code_substitute(code, 'push X0\nX1 = X2', 'X1 = X2\npush X0', 'assert X0 !== X1')
@@ -789,14 +800,15 @@ def stage1(code):
 			code = code_substitute(code, 'X0 = X1\nX2 = X0', 'X0 = X1\nX2 = X1')
 			code = code_substitute(code, 'X0 = X1\nX2 = dword ptr [X0]', 'X0 = X1\nX2 = dword ptr [X1]')
 			code = code_replace(code, {'dword ptr [ebp+8]': 'ARGV[1]'})
-			code = code_replace(code, {'dword ptr [ebp+0Ch]': 'ARGV[2]'})
-			code = code_replace(code, {'dword ptr [ebp+10h]': 'ARGV[3]'})
-			code = code_replace(code, {'dword ptr [ebp+14h]': 'ARGV[4]'})
-			code = code_replace(code, {'dword ptr [ebp+18h]': 'ARGV[5]'})
-			code = code_replace(code, {'dword ptr [ebp+1Ch]': 'ARGV[6]'})
-			code = code_replace(code, {'dword ptr [ebp+20h]': 'ARGV[7]'})
-			code = code_replace(code, {'dword ptr [ebp+24h]': 'ARGV[8]'})
-			code = code_replace(code, {'dword ptr [ebp+28h]': 'ARGV[9]'})
+			code = code_replace(code, {'dword ptr [ebp+0x8]': 'ARGV[1]'})
+			code = code_replace(code, {'dword ptr [ebp+0xC]': 'ARGV[2]'})
+			code = code_replace(code, {'dword ptr [ebp+0x10]': 'ARGV[3]'})
+			code = code_replace(code, {'dword ptr [ebp+0x14]': 'ARGV[4]'})
+			code = code_replace(code, {'dword ptr [ebp+0x18]': 'ARGV[5]'})
+			code = code_replace(code, {'dword ptr [ebp+0x1C]': 'ARGV[6]'})
+			code = code_replace(code, {'dword ptr [ebp+0x20]': 'ARGV[7]'})
+			code = code_replace(code, {'dword ptr [ebp+0x24]': 'ARGV[8]'})
+			code = code_replace(code, {'dword ptr [ebp+0x28]': 'ARGV[9]'})
 			code = code_replace(code, {'0FFFFFFFFh': '-1'})
 			code = code_replace(code, {'dword ptr fs:[00000018h]': 'NtCurrentTeb()'})
 		block['code'] = code
