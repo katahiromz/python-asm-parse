@@ -823,17 +823,18 @@ def blocks_replace_calls(blocks):
 				if num_params >= 0:
 					valid = True
 					#print("FOUND: " + func + ": " + str(num_params))
-					pushing = []
+					params = []
 					for k2 in range(k - num_params, k):
 						asm2 = code[k2]
 						if asm2[1] != 'push':
 							valid = False
 							break
-						pushing.append(asm2[2])
+						params.append(asm2[2])
 					if valid:
-						pushing.reverse();
+						if spec[func]['convention'] == 'stdcall':
+							params.reverse();
 						text = 'eax = ' + func + '('
-						text += ", ".join(pushing)
+						text += ", ".join(params)
 						text += ')'
 						code0 = text_to_code(text)
 						code[k - num_params : k + 1] = code0
