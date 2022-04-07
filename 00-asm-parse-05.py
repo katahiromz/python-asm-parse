@@ -922,11 +922,17 @@ def print_blocks(blocks):
 		iblock = block['iblock']
 		text += "\n"
 		if True:
+			dom = None
+			try:
+				dom = dominators(blocks, iblock)
+			except:
+				dom = None
 			text += "// Block #" + str(iblock) + \
 			        ' (type:' + block['type'] + \
 			        ", pred:" + str(block['pred']) + \
-			        ", succ:" + str(block['succ']) + \
-			        ", dom:" + str(dominators(blocks, iblock))
+			        ", succ:" + str(block['succ'])
+			if not(dom is None):
+				text += ", dom:" + str(dom)
 			if 'condition' in block:
 				text += ", cond:(" + str(block['condition']) + ')'
 			if 'label' in block:
