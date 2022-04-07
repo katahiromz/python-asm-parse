@@ -2121,9 +2121,13 @@ IMM32!_imp__InitializeProcThreadAttributeList --> kernel32!InitializeProcThreadA
 IMM32!_imp__InitializeSListHead --> kernel32!InitializeSListHead
 IMM32!_imp__InitializeSRWLock --> kernel32!InitializeSRWLock
 IMM32!_imp__InterlockedCompareExchange  --> kernel32!InterlockedCompareExchange 
+IMM32!_imp__InterlockedCompareExchange --> kernel32!InterlockedCompareExchange
 IMM32!_imp__InterlockedCompareExchange64 --> kernel32!InterlockedCompareExchange64
 IMM32!_imp__InterlockedDecrement --> kernel32!InterlockedDecrement
+IMM32!_imp__InterlockedDecrement --> kernel32!InterlockedDecrement
 IMM32!_imp__InterlockedExchange --> kernel32!InterlockedExchange
+IMM32!_imp__InterlockedExchange --> kernel32!InterlockedExchange
+IMM32!_imp__InterlockedExchangeAdd --> kernel32!InterlockedExchangeAdd
 IMM32!_imp__InterlockedExchangeAdd --> kernel32!InterlockedExchangeAdd
 IMM32!_imp__InterlockedFlushSList --> kernel32!InterlockedFlushSList
 IMM32!_imp__InterlockedIncrement --> kernel32!InterlockedIncrement

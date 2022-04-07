@@ -272,6 +272,7 @@ def load_spec(file, module_name):
 				line = line[:i1]
 			line = line.replace('-stub ', '')
 			line = line.replace('-norelay ', '')
+			line = line.replace('-arch=i386 ', '')
 			convention = ''
 			i2 = line.find('stdcall')
 			if i2 != -1:
