@@ -810,7 +810,7 @@ def stage1(code):
 			code = code_replace(code, {'dword ptr [ebp+0x20]': 'ARGV[7]'})
 			code = code_replace(code, {'dword ptr [ebp+0x24]': 'ARGV[8]'})
 			code = code_replace(code, {'dword ptr [ebp+0x28]': 'ARGV[9]'})
-			code = code_replace(code, {'dword ptr fs:[00000018h]': 'NtCurrentTeb()'})
+			code = code_replace(code, {'dword ptr fs:[0x18]': 'NtCurrentTeb()'})
 		block['code'] = code
 	#print('--- label_map1 ---')
 	#print(label_map1)
