@@ -899,10 +899,10 @@ def main(argc, argv):
 	load_spec("ntdll.spec", "ntdll")
 	#print(spec)
 	#print('---')
-	if True:
-		code = text_to_code(text_code())
-	else:
+	if argc >= 2:
 		code = file_to_code(argv[1])
+	else:
+		code = text_to_code(text_code())
 	blocks = stage1(code)
 	blocks = stage2(blocks)
 	blocks = stage3(blocks)
