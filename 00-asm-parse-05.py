@@ -829,8 +829,9 @@ def print_blocks(blocks):
 				params += 'ARGV[' + str(i + 1) + ']'
 		text += params + ")\n"
 		text += "{\n"
-	for iblock in range(len(blocks)):
-		block = blocks[iblock]
+	for i in range(len(blocks)):
+		block = blocks[i]
+		iblock = block['iblock']
 		text += "\n"
 		if True:
 			text += "// Block #" + str(iblock) + \
