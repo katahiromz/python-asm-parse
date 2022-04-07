@@ -921,7 +921,7 @@ def print_blocks(blocks):
 		block = blocks[i]
 		iblock = block['iblock']
 		text += "\n"
-		if True:
+		if False:
 			dom = None
 			try:
 				dom = dominators(blocks, iblock)
