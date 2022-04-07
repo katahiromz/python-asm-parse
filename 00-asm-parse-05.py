@@ -968,7 +968,7 @@ def main(argc, argv):
 	load_spec("imm32.spec", "IMM32")
 	load_spec("ntdll.spec", "ntdll")
 	load_spec("imm32_undoc.spec", "IMM32")
-	print(spec)
+	#print(spec)
 	#print('---')
 	if argc >= 2:
 		code = file_to_code(argv[1])
