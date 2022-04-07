@@ -581,6 +581,8 @@ def dominators(blocks, inode):
 	pred = block['pred']
 	dom = None
 	for p in pred:
+		if p == inode:
+			continue
 		dom0 = dominators(blocks, p)
 		if dom is None:
 			dom = dom0
@@ -888,6 +890,10 @@ def text_code():
 		'label3:',
 		'eax = esi',
 		'label4:',
+		'eax = eax - 1',
+		'cmp eax,0',
+		'jne label4',
+		'label5:',
 		'ret'
 	])
 
