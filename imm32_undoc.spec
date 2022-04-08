@@ -6,3 +6,4 @@
 @ stdcall ImmLocalAlloc(long long)
 @ stdcall PtiCurrent()
 @ stdcall Internal_CtfImeDestroyInputContext(ptr)
+@ stdcall UnloadIME(ptr long)

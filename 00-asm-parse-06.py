@@ -24,6 +24,19 @@ def is_hex(text):
 		return False
 	return True
 
+def is_addr(text):
+	for ch in text:
+		if '0' <= ch and ch <= '9':
+			continue
+		if 'a' <= ch and ch <= 'f':
+			continue
+		if 'A' <= ch and ch <= 'F':
+			continue
+		if ch == ':':
+			continue
+		return False
+	return True
+
 def is_dec(text):
 	for ch in text:
 		if '0' <= ch and ch <= '9':
@@ -456,7 +469,7 @@ def text_to_code(text):
 			field1 = ''
 			if len(items) >= 2:
 				field1 = items[1].strip()
-			if is_hex(field0) and is_hex(field1):
+			if is_addr(field0) and is_hex(field1):
 				addr = field0
 				hex = field1
 				items = items[2:]
